@@ -243,6 +243,44 @@ public class Kart_DriftStateChangePatch // Renamed to reflect its new purpose
         }
     }
 }
+
+[HarmonyPatch(typeof(RcVehicleRaceStats))]
+[HarmonyPatch("CrossStartLine")]
+public class RcVehicleRaceStats_LapFinishPatch
+{
+    private static ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("LapFinishMod");
     
+    static void Postfix(RcVehicleRaceStats __instance, int _gameTime, bool _bReverse)
+    {
+        Kart kart = __instance.GetVehicle() as Kart;
+        
+        if (kart == null || kart.Driver == null || _bReverse)
+        {
+            return;
+        }
+        
+        if (kart.Driver.IsLocal && kart.Driver.IsHuman)
+        {
+            int currentLap = __instance.GetNbLapCompleted();
+            int totalLaps = __instance.GetRaceNbLap();
+            
+            if (__instance.IsRaceEnded())
+            {
+                Logger.LogInfo($"Local Player {kart.Driver.Id} FINISHED THE RACE!");
+                buttplugManager.VibrateDevicePulse(60, 2000);
+                
+                return;
+            }
+
+            // --- Check for Regular Lap Change ---
+            if (currentLap > 0)
+            {
+                Logger.LogInfo($"Local Player {kart.Driver.Id} started NEW LAP ({currentLap}/{totalLaps})!");
+                buttplugManager.VibrateDevicePulse(60, 700);
+            }
+        }
+    }
+}
+
     
 }
