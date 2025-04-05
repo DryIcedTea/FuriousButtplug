@@ -1,6 +1,7 @@
 ﻿using System.Threading.Tasks;
 using BepInEx;
 using BepInEx.Logging;
+using BepInEx.Configuration;
 using HarmonyLib;
 using UnityEngine;
 
@@ -9,15 +10,56 @@ namespace FuriousButtplug;
 [BepInPlugin("DryIcedMatcha.FuriousButtplug", "Garfield Kart Furious Buttplug", "1.0.0")]
 public class Plugin : BaseUnityPlugin
 {
+    internal static Plugin Instance { get; private set; }
     internal static new ManualLogSource Logger;
     private static BPManager buttplugManager;
     private Harmony harmony;
+    
+    // Configuration entries
+    private ConfigEntry<string> configServerAddress;
+    
+    // Drift settings
+    private ConfigEntry<int> configDriftBaseIntensity;
+    private ConfigEntry<int> configDriftLevel1Intensity;
+    private ConfigEntry<int> configDriftLevel2Intensity;
+    
+    // Boost settings
+    private ConfigEntry<int> configBoostIntensity;
+    private ConfigEntry<int> configMiniBoostLevel1Intensity;
+    private ConfigEntry<int> configMiniBoostLevel2Intensity;
+    
+    // Collision settings
+    private ConfigEntry<float> configCollisionForceMultiplier;
+    
+    // Lap settings
+    private ConfigEntry<int> configLapCompleteIntensity;
+    private ConfigEntry<int> configRaceFinishIntensity;
+    
+    //Player hit with effect settings
+    private ConfigEntry<int> configPlayerHitEffectIntensity;
+    
+    private ConfigEntry<int> configPlayerUFOEffectIntensity;
+    
+    //Vibration Toggles
+    private ConfigEntry<bool> configEnableDriftChargeVibration;
+    private ConfigEntry<bool> configEnableDriftBoostVibration;
+    private ConfigEntry<bool> configEnableCollisionVibration;
+    private ConfigEntry<bool> configEnableLapCompleteVibration;
+    private ConfigEntry<bool> configEnableRaceFinishVibration;
+    private ConfigEntry<bool> configEnablePlayerHitVibration;
+    private ConfigEntry<bool> configEnableUFOVibration;
+    private ConfigEntry<bool> configEnableBoostPadVibration;
+    
 
     private void Awake()
     {
         // Plugin startup logic
         Logger = base.Logger;
+        Instance = this;
         Logger.LogInfo($"Plugin FuriousButtplug is loaded!");
+        
+        InitializeConfig();
+        
         buttplugManager = new BPManager(Logger);
 
         harmony = new Harmony("com.dryicedmatcha.furiousbuttplug");
@@ -25,11 +67,122 @@ public class Plugin : BaseUnityPlugin
 
         Task.Run(async () =>
         {
-            await buttplugManager.ConnectButtplug("localhost:12342");
+            await buttplugManager.ConnectButtplug(configServerAddress.Value);
             await buttplugManager.ScanForDevices();
         });
     }
+    
+private void InitializeConfig()
+{
+    // Connection settings
+    configServerAddress = Config.Bind("Connection",
+        "ServerAddress",
+        "localhost:12345",
+        "Address of the Intiface/Buttplug server");
 
+    // Drift settings
+    configDriftBaseIntensity = Config.Bind("Drift",
+        "BaseIntensity",
+        10,
+        "Base vibration intensity when starting to drift (0-100)");
+
+    configDriftLevel1Intensity = Config.Bind("Drift",
+        "Level1Intensity",
+        20,
+        "Vibration intensity at drift level 1 (blue sparks) (0-100)");
+
+    configDriftLevel2Intensity = Config.Bind("Drift",
+        "Level2Intensity",
+        30,
+        "Vibration intensity at drift level 2 (red sparks) (0-100)");
+
+    // Boost settings
+    configBoostIntensity = Config.Bind("Boost",
+        "Intensity",
+        100,
+        "Vibration intensity when hitting a boost pad/item (0-100)");
+
+    configMiniBoostLevel1Intensity = Config.Bind("MiniBoost",
+        "Level1Intensity",
+        50,
+        "Vibration intensity for level 1 drift mini-boost (0-100)");
+
+    configMiniBoostLevel2Intensity = Config.Bind("MiniBoost",
+        "Level2Intensity",
+        50,
+        "Vibration intensity for level 2 drift mini-boost (0-100)");
+
+    // Collision settings
+    configCollisionForceMultiplier = Config.Bind("Collision",
+        "ForceMultiplier",
+        10.0f,
+        "Multiplier for collision force to determine vibration intensity when colliding with cars/walls");
+
+    // Lap settings
+    configLapCompleteIntensity = Config.Bind("Lap",
+        "CompleteIntensity",
+        60,
+        "Vibration intensity when completing a lap (0-100)");
+
+    configRaceFinishIntensity = Config.Bind("Lap",
+        "RaceFinishIntensity",
+        60,
+        "Vibration intensity when finishing the race (0-100)");
+
+    // Effect settings
+    configPlayerHitEffectIntensity = Config.Bind("Effects",
+        "HitEffectIntensity",
+        60,
+        "Vibration intensity when player is hit by an effect/item (0-100)");
+
+    configPlayerUFOEffectIntensity = Config.Bind("Effects",
+        "UFOEffectIntensity",
+        60,
+        "Vibration intensity for UFO/Levitate effect (0-100)");
+    
+    // Vibration toggles
+    configEnableDriftChargeVibration = Config.Bind("Vibration Toggles",
+        "EnableDriftChargeVibration",
+        true,
+        "Enable vibration during drift charging");
+
+    configEnableDriftBoostVibration = Config.Bind("Vibration Toggles",
+        "EnableDriftBoostVibration",
+        true,
+        "Enable vibration for drift boosts/miniturbo");
+
+    configEnableCollisionVibration = Config.Bind("Vibration Toggles",
+        "EnableCollisionVibration",
+        true,
+        "Enable vibration when colliding with objects or vehicles");
+
+    configEnableLapCompleteVibration = Config.Bind("Vibration Toggles", 
+        "EnableLapCompleteVibration",
+        true,
+        "Enable vibration when completing a lap");
+
+    configEnableRaceFinishVibration = Config.Bind("Vibration Toggles",
+        "EnableRaceFinishVibration",
+        true,
+        "Enable vibration when finishing the race");
+
+    configEnablePlayerHitVibration = Config.Bind("Vibration Toggles",
+        "EnablePlayerHitVibration",
+        true,
+        "Enable vibration when player is hit by items/effects");
+
+    configEnableUFOVibration = Config.Bind("Vibration Toggles",
+        "EnableUFOVibration",
+        true,
+        "Enable vibration for UFO/levitate effect");
+
+    configEnableBoostPadVibration = Config.Bind("Vibration Toggles",
+        "EnableBoostPadVibration",
+        true,
+        "Enable vibration for boost pads/items");
+}
+    
+    
     private void OnDestroy()
     {
         harmony.UnpatchSelf();
@@ -49,13 +202,22 @@ public class Plugin : BaseUnityPlugin
                 switch (_BonusEffect)
                 {
                     case EBonusEffect.BONUSEFFECT_BOOST:
-                        buttplugManager.VibrateDevicePulse(100, 1800);
+                        if (Plugin.Instance.configEnableBoostPadVibration.Value)
+                        {
+                            buttplugManager.VibrateDevicePulse(Plugin.Instance.configBoostIntensity.Value, 1800);
+                        }
                         break;
                     case EBonusEffect.BONUSEFFECT_LEVITATE:
-                        buttplugManager.VibrateDevicePulse(60, 3000);
+                        if (Plugin.Instance.configEnableUFOVibration.Value)
+                        {
+                            buttplugManager.VibrateDevicePulse(Plugin.Instance.configPlayerUFOEffectIntensity.Value, 3000);
+                        }
                         break;
                     default:
-                        buttplugManager.VibrateDevicePulse(60);
+                        if (Plugin.Instance.configEnablePlayerHitVibration.Value)
+                        {
+                            buttplugManager.VibrateDevicePulse(Plugin.Instance.configPlayerHitEffectIntensity.Value);
+                        }
                         break;
                 }
             }
@@ -76,27 +238,31 @@ public class Kart_DriftBoostPatch
         if (__instance != null && __instance.Driver != null && __instance.Driver.IsLocal && __instance.Driver.IsHuman)
         {
             Kart.DRIFT_STATE currentDriftState = __instance.m_driftState;
-            
+
             Logger.LogInfo($"Local Player {__instance.Driver.Id} STOPPED drifting via BOOST.");
             Kart_StartDriftPatch.isDrifting = false; // Reset drift flag
 
-            switch (currentDriftState)
+            // Only trigger vibrations if the drift boost vibration toggle is enabled
+            if (Plugin.Instance.configEnableDriftBoostVibration.Value)
             {
-                case Kart.DRIFT_STATE.FIRST_THRESHOLD:
-                    // Player executed the first level (blue sparks) mini-turbo
-                    Logger.LogInfo($"Local Player {__instance.Driver.Id} executed a Level 1 Drift Boost!");
-                    buttplugManager.VibrateDevicePulse(50, 600);
-                    isBoostActive = true;
-                    break;
+                switch (currentDriftState)
+                {
+                    case Kart.DRIFT_STATE.FIRST_THRESHOLD:
+                        // Player executed the first level (blue sparks) mini-turbo
+                        Logger.LogInfo($"Local Player {__instance.Driver.Id} executed a Level 1 Drift Boost!");
+                        buttplugManager.VibrateDevicePulse(Plugin.Instance.configMiniBoostLevel1Intensity.Value, 600);
+                        isBoostActive = true;
+                        break;
 
-                case Kart.DRIFT_STATE.SECOND_THRESHOLD:
-                    // Player executed the second level (red/orange sparks) mini-turbo
-                    Logger.LogInfo($"Local Player {__instance.Driver.Id} executed a Level 2 Drift Boost!");
-                    buttplugManager.VibrateDevicePulse(50, 1800);
-                    isBoostActive = true;
-                    break;
-                default:
-                    break;
+                    case Kart.DRIFT_STATE.SECOND_THRESHOLD:
+                        // Player executed the second level (red/orange sparks) mini-turbo
+                        Logger.LogInfo($"Local Player {__instance.Driver.Id} executed a Level 2 Drift Boost!");
+                        buttplugManager.VibrateDevicePulse(Plugin.Instance.configMiniBoostLevel2Intensity.Value, 1800);
+                        isBoostActive = true;
+                        break;
+                    default:
+                        break;
+                }
             }
         }
     }
@@ -114,6 +280,10 @@ public class Kart_DriftBoostPatch
 
             if (kart != null && __instance.IsLocal && __instance.IsHuman)
             {
+                // First check if collision vibrations are enabled
+                if (!Plugin.Instance.configEnableCollisionVibration.Value)
+                    return;
+                
                 GameObject collidedObject = collision.gameObject;
                 int collidedLayer = collidedObject.layer;
                 string layerName = LayerMask.LayerToName(collidedLayer);
@@ -130,7 +300,7 @@ public class Kart_DriftBoostPatch
                         Logger.LogInfo($"Local Player {__instance.Id} collided with {collidedObject.name} (Layer: {layerName}) with force: {collisionForce}");
 
                         // Trigger vibration
-                        int intensity = Mathf.Min(100, Mathf.RoundToInt(collisionForce * 10));
+                        int intensity = Mathf.Min(100, Mathf.RoundToInt(collisionForce * Plugin.Instance.configCollisionForceMultiplier.Value));
                         buttplugManager.VibrateDevicePulse(intensity, 300);
                     }
                 }
@@ -142,6 +312,7 @@ public class Kart_DriftBoostPatch
     /// <summary>
     /// Executes when the player starts drifting!
     /// </summary>
+    
     [HarmonyPatch(typeof(Kart))]
     [HarmonyPatch("SetDriftState")] // Method that updates the internal drift state enum
     public class Kart_StartDriftPatch
@@ -163,7 +334,7 @@ public class Kart_DriftBoostPatch
                         Logger.LogInfo($"Local Player {__instance.Driver.Id} STARTED drifting. New state: {state}");
 
                         // --- Trigger START drift vibration here ---
-                        buttplugManager.VibrateDevice(20);
+                        buttplugManager.VibrateDevice(Plugin.Instance.configDriftBaseIntensity.Value);
                     }
                 }
                 // Handle the case where the state goes back to NONE (drift ended)
@@ -195,18 +366,20 @@ public class Kart_DriftBoostPatch
         }
     }
     
-    
-    //Executes when the player changes their drift state
-    [HarmonyPatch(typeof(Kart))]
-    [HarmonyPatch("SetDriftState")]
-public class Kart_DriftStateChangePatch // Renamed to reflect its new purpose
+[HarmonyPatch(typeof(Kart))]
+[HarmonyPatch("SetDriftState")]
+public class Kart_DriftStateChangePatch
 {
     private static ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("DriftMod");
-    
+
     static void Prefix(Kart __instance, Kart.DRIFT_STATE state)
     {
         if (__instance != null && __instance.Driver != null && __instance.Driver.IsLocal && __instance.Driver.IsHuman)
         {
+            // First check if drift charge vibrations are enabled
+            if (!Plugin.Instance.configEnableDriftChargeVibration.Value)
+                return;
+
             Kart.DRIFT_STATE currentState = __instance.m_driftState;
 
             // Only act if the state is actually changing
@@ -224,19 +397,19 @@ public class Kart_DriftStateChangePatch // Renamed to reflect its new purpose
                     case Kart.DRIFT_STATE.NO_BOOST:
                         // Just started drifting, or fell back from level 1
                         Logger.LogInfo($"Local Player {__instance.Driver.Id} Drift State changed to NO_BOOST. Setting vibration intensity 1.");
-                        buttplugManager.VibrateDevice(10); // Start vibration
+                        buttplugManager.VibrateDevice(Plugin.Instance.configDriftBaseIntensity.Value); // Start vibration
                         break;
 
                     case Kart.DRIFT_STATE.FIRST_THRESHOLD:
                         // Reached level 1 (blue sparks)
                         Logger.LogInfo($"Local Player {__instance.Driver.Id} Drift State changed to FIRST_THRESHOLD. Setting vibration intensity 2.");
-                        buttplugManager.VibrateDevice(20);
+                        buttplugManager.VibrateDevice(Plugin.Instance.configDriftLevel1Intensity.Value);
                         break;
 
                     case Kart.DRIFT_STATE.SECOND_THRESHOLD:
                         // Reached level 2 (red/orange sparks)
                         Logger.LogInfo($"Local Player {__instance.Driver.Id} Drift State changed to SECOND_THRESHOLD. Setting vibration intensity 3.");
-                        buttplugManager.VibrateDevice(30);
+                        buttplugManager.VibrateDevice(Plugin.Instance.configDriftLevel2Intensity.Value);
                         break;
                 }
             }
@@ -249,26 +422,28 @@ public class Kart_DriftStateChangePatch // Renamed to reflect its new purpose
 public class RcVehicleRaceStats_LapFinishPatch
 {
     private static ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("LapFinishMod");
-    
+
     static void Postfix(RcVehicleRaceStats __instance, int _gameTime, bool _bReverse)
     {
         Kart kart = __instance.GetVehicle() as Kart;
-        
+
         if (kart == null || kart.Driver == null || _bReverse)
         {
             return;
         }
-        
+
         if (kart.Driver.IsLocal && kart.Driver.IsHuman)
         {
             int currentLap = __instance.GetNbLapCompleted();
             int totalLaps = __instance.GetRaceNbLap();
-            
+
             if (__instance.IsRaceEnded())
             {
                 Logger.LogInfo($"Local Player {kart.Driver.Id} FINISHED THE RACE!");
-                buttplugManager.VibrateDevicePulse(60, 2000);
-                
+                if (Plugin.Instance.configEnableRaceFinishVibration.Value)
+                {
+                    buttplugManager.VibrateDevicePulse(Plugin.Instance.configRaceFinishIntensity.Value, 2000);
+                }
                 return;
             }
 
@@ -276,7 +451,10 @@ public class RcVehicleRaceStats_LapFinishPatch
             if (currentLap > 0)
             {
                 Logger.LogInfo($"Local Player {kart.Driver.Id} started NEW LAP ({currentLap}/{totalLaps})!");
-                buttplugManager.VibrateDevicePulse(60, 700);
+                if (Plugin.Instance.configEnableLapCompleteVibration.Value)
+                {
+                    buttplugManager.VibrateDevicePulse(Plugin.Instance.configLapCompleteIntensity.Value, 700);
+                }
             }
         }
     }
