@@ -41,13 +41,95 @@ public class Plugin : BaseUnityPlugin
     {
         static void Postfix(BonusEffectMgr __instance, EBonusEffect _BonusEffect)
         {
-            var targetKart = __instance.Target;
-            if (targetKart != null && targetKart.Driver.IsLocal)
+            Kart targetKart = __instance.Target;
+            if (targetKart != null && targetKart.Driver != null && targetKart.Driver.IsLocal && targetKart.Driver.IsHuman)
             {
-                // Trigger your custom action here
-                Logger.LogInfo($"Custom action triggered for effect: {_BonusEffect}");
-                buttplugManager.VibrateDevicePulse(100);
+                Logger.LogInfo($"Local HUMAN Player {targetKart.Driver.Id} hit by effect: {_BonusEffect}");
+
+                switch (_BonusEffect)
+                {
+                    case EBonusEffect.BONUSEFFECT_BOOST:
+                        buttplugManager.VibrateDevicePulse(100, 1800);
+                        break;
+                    case EBonusEffect.BONUSEFFECT_LEVITATE:
+                        buttplugManager.VibrateDevicePulse(60, 3000);
+                        break;
+                    default:
+                        buttplugManager.VibrateDevicePulse(60);
+                        break;
+                }
             }
         }
     }
+    
+    [HarmonyPatch(typeof(Kart))]
+[HarmonyPatch("LaunchMiniBoost")]
+public class Kart_DriftBoostPatch
+{
+    private static ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("DriftBoostMod");
+
+    static void Postfix(Kart __instance)
+    {
+        // Check if this Kart belongs to the local human player
+        if (__instance != null && __instance.Driver != null && __instance.Driver.IsLocal && __instance.Driver.IsHuman)
+        {
+            Kart.DRIFT_STATE currentDriftState = __instance.m_driftState;
+
+            switch (currentDriftState)
+            {
+                case Kart.DRIFT_STATE.FIRST_THRESHOLD:
+                    // Player executed the first level (blue sparks) mini-turbo
+                    Logger.LogInfo($"Local Player {__instance.Driver.Id} executed a Level 1 Drift Boost!");
+                    buttplugManager.VibrateDevicePulse(50, 600);
+                    break;
+
+                case Kart.DRIFT_STATE.SECOND_THRESHOLD:
+                    // Player executed the second level (red/orange sparks) mini-turbo
+                    Logger.LogInfo($"Local Player {__instance.Driver.Id} executed a Level 2 Drift Boost!");
+                    buttplugManager.VibrateDevicePulse(50, 1800);
+                    break;
+                default:
+                    break;
+            }
+        }
+    }
+}
+
+    [HarmonyPatch(typeof(Driver))]
+    [HarmonyPatch("OnCollisionEnter")]
+    public class Driver_CollisionPatch
+    {
+        private static ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("CollisionMod");
+
+        static void Postfix(Driver __instance, Collision collision)
+        {
+            Kart kart = __instance.Kart;
+
+            if (kart != null && __instance.IsLocal && __instance.IsHuman)
+            {
+                GameObject collidedObject = collision.gameObject;
+                int collidedLayer = collidedObject.layer;
+                string layerName = LayerMask.LayerToName(collidedLayer);
+
+                // Only proceed if the collision is with a wall or vehicle
+                if (layerName == "ColWall" || layerName == "Vehicle")
+                {
+                    // Check collision force/velocity magnitude
+                    float collisionForce = collision.relativeVelocity.magnitude;
+
+                    // Apply threshold for significant collisions (now 4.0f)
+                    if (collisionForce > 4.0f)
+                    {
+                        Logger.LogInfo($"Local Player {__instance.Id} collided with {collidedObject.name} (Layer: {layerName}) with force: {collisionForce}");
+
+                        // Trigger vibration
+                        int intensity = Mathf.Min(100, Mathf.RoundToInt(collisionForce * 10));
+                        buttplugManager.VibrateDevicePulse(intensity, 300);
+                    }
+                }
+            }
+        }
+    }
+    
+    
 }
