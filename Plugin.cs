@@ -229,12 +229,12 @@ private void InitializeConfig()
 public class Kart_DriftBoostPatch
 {
     private static ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("DriftBoostMod");
-    public static bool isBoostActive = false; // Track if we are currently boosting
+    public static bool isBoostActive = false;
     public static long boostEndTime = 0;
 
     static void Postfix(Kart __instance)
     {
-        // Check if this Kart belongs to the local human player
+        // Check if this Kart belongs to player
         if (__instance != null && __instance.Driver != null && __instance.Driver.IsLocal && __instance.Driver.IsHuman)
         {
             Kart.DRIFT_STATE currentDriftState = __instance.m_driftState;
@@ -280,7 +280,6 @@ public class Kart_DriftBoostPatch
 
             if (kart != null && __instance.IsLocal && __instance.IsHuman)
             {
-                // First check if collision vibrations are enabled
                 if (!Plugin.Instance.configEnableCollisionVibration.Value)
                     return;
                 
@@ -291,15 +290,12 @@ public class Kart_DriftBoostPatch
                 // Only proceed if the collision is with a wall or vehicle
                 if (layerName == "ColWall" || layerName == "Vehicle")
                 {
-                    // Check collision force/velocity magnitude
                     float collisionForce = collision.relativeVelocity.magnitude;
-
-                    // Apply threshold for significant collisions (now 4.0f)
+                    
                     if (collisionForce > 4.0f)
                     {
                         Logger.LogInfo($"Local Player {__instance.Id} collided with {collidedObject.name} (Layer: {layerName}) with force: {collisionForce}");
-
-                        // Trigger vibration
+                        
                         int intensity = Mathf.Min(100, Mathf.RoundToInt(collisionForce * Plugin.Instance.configCollisionForceMultiplier.Value));
                         buttplugManager.VibrateDevicePulse(intensity, 300);
                     }
@@ -309,12 +305,9 @@ public class Kart_DriftBoostPatch
     }
     
     
-    /// <summary>
-    /// Executes when the player starts drifting!
-    /// </summary>
-    
+
     [HarmonyPatch(typeof(Kart))]
-    [HarmonyPatch("SetDriftState")] // Method that updates the internal drift state enum
+    [HarmonyPatch("SetDriftState")] 
     public class Kart_StartDriftPatch
     {
         private static ManualLogSource Logger = BepInEx.Logging.Logger.CreateLogSource("DriftMod");
@@ -322,31 +315,31 @@ public class Kart_DriftBoostPatch
 
         static void Prefix(Kart __instance, Kart.DRIFT_STATE state)
         {
-            // Check if it's the local human player
+            // Check if player
             if (__instance != null && __instance.Driver != null && __instance.Driver.IsLocal && __instance.Driver.IsHuman)
             {
                 // Check if the *current* state is NONE and the *new* state is NOT NONE
                 if (__instance.m_driftState == Kart.DRIFT_STATE.NONE && state != Kart.DRIFT_STATE.NONE)
                 {
-                    if (!isDrifting) // Prevent firing multiple times if state rapidly changes > NONE
+                    if (!isDrifting)
                     {
                         isDrifting = true;
                         Logger.LogInfo($"Local Player {__instance.Driver.Id} STARTED drifting. New state: {state}");
 
-                        // --- Trigger START drift vibration here ---
+
                         buttplugManager.VibrateDevice(Plugin.Instance.configDriftBaseIntensity.Value);
                     }
                 }
-                // Handle the case where the state goes back to NONE (drift ended)
+                
                 else if (__instance.m_driftState != Kart.DRIFT_STATE.NONE && state == Kart.DRIFT_STATE.NONE)
                 {
                     Logger.LogInfo($"Local Player {__instance.Driver.Id} STOPPED drifting (SetDriftState to NONE)");
-                    isDrifting = false; // Reset drift flag when stopping
+                    isDrifting = false; 
                     if (!Kart_DriftBoostPatch.isBoostActive)
                     {
-                        buttplugManager.VibrateDevice(0); // Stop vibration
+                        buttplugManager.VibrateDevice(0); 
                     }
-                    Kart_DriftBoostPatch.isBoostActive = false; // Reset boost flag
+                    Kart_DriftBoostPatch.isBoostActive = false; 
                     
                 }
             }
@@ -360,7 +353,7 @@ public class Kart_DriftBoostPatch
                 if (state == Kart.DRIFT_STATE.NONE)
                 {
                     isDrifting = false;
-                    //buttplugManager.VibrateDevice(0); // Stop vibration
+                    //buttplugManager.VibrateDevice(0); 
                 }
             }
         }
@@ -376,21 +369,19 @@ public class Kart_DriftStateChangePatch
     {
         if (__instance != null && __instance.Driver != null && __instance.Driver.IsLocal && __instance.Driver.IsHuman)
         {
-            // First check if drift charge vibrations are enabled
+            
             if (!Plugin.Instance.configEnableDriftChargeVibration.Value)
                 return;
 
             Kart.DRIFT_STATE currentState = __instance.m_driftState;
-
-            // Only act if the state is actually changing
+            
             if (currentState != state)
             {
-                switch (state) // Check the NEW state
+                switch (state) 
                 {
                     case Kart.DRIFT_STATE.NONE:
                         // Drift ended (or wasn't started), stop vibration
                         Logger.LogInfo($"Local Player {__instance.Driver.Id} Drift State changed to NONE. Stopping vibration.");
-                        // --- Stop continuous drift vibration ---
                         //buttplugManager.VibrateDevice(0); // Stop vibration
                         break;
 
@@ -447,7 +438,7 @@ public class RcVehicleRaceStats_LapFinishPatch
                 return;
             }
 
-            // --- Check for Regular Lap Change ---
+            //Check for Regular Lap Change
             if (currentLap > 0)
             {
                 Logger.LogInfo($"Local Player {kart.Driver.Id} started NEW LAP ({currentLap}/{totalLaps})!");

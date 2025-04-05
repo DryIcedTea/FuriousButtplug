@@ -2,7 +2,7 @@
 ## A [Buttplug.io](https://buttplug.io/) mod for Garfield Kart Furious Racing
 
 This mod allows you to connect your Buttplug.io compatible toys to Garfield Kart Furious Racing!
-## [DOWNLOADS](https://github.com/TheSaltyGaming/Garfield-Kart-Furious-Buttplug/releases)
+## [DOWNLOADS](https://github.com/DryIcedTea/FuriousButtplug/releases)
 
 ## Installation and Setup
 1. Install [Intiface Central](https://intiface.com/central/)
